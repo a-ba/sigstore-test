@@ -101,7 +101,7 @@ jobs:
                 "busybox"])
               digest = json.load(open(f"{tmp}/mdf"))["containerimage.digest"]
 
-              sys.stderr.write(f"#\n#   Signing {image}:{tag}\n#\n")
+              sys.stderr.write(f"#\n#   Signing {repo}:{tag}@{digest}\n#\n")
               subprocess.call(["date"])
               subprocess.check_call(["cosign", "sign", "--yes", "--tlog-upload=false", "--oidc-provider=github-actions", f"{repo}:{tag}@{digest}"])
           finally:

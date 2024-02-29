@@ -21,6 +21,10 @@ env:
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
 
+  DOCKER_REPOSITORY: ghcr.io/${{ github.repository }}
+  GIT_REPO_URL: https://github.com/${{ github.repository }}
+  TAG: ${{ github.ref_name }}
+
 jobs:
   build:
 
@@ -60,38 +64,81 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Extract metadata (tags, labels) for Docker
-      # https://github.com/docker/metadata-action
-      - name: Extract Docker metadata
-        id: meta
-        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+      - name: Build, push & sign docker images
+        if: github.event_name != 'pull_request'
+        shell: python
+        run: |
+          import json
+          import os
+          import sys
+          import subprocess
+          import tempfile
 
-      # Build and push Docker image with Buildx (don't push on PR)
-      # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
-        id: build-and-push
-        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
-        with:
-          context: busybox
-          push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          IMAGES = ["database"]
+          #IMAGES = "database datasets import keycloak keycloak-database nginx nifti-conversion preclinical solr studies users".split()
+          
+          env = os.environ
+          tag = env['TAG']
+          try:
+           for image in IMAGES:
+            repo = f"{env['DOCKER_REPOSITORY']}/{image}"
+            with tempfile.TemporaryDirectory() as tmp:
+              sys.stderr.write(f"#\n#   Building {image}:{tag}\n#\n")
+              subprocess.call(["date"])
+              subprocess.check_call(["docker", "buildx", "build",
+                "--cache-from=type=gha",
+                "--cache-to=type=gha,mode=max",
+                "--tag", f"{ repo }:{ env['TAG'] }",
+                "--tag", f"{ repo }:latest",
+                "--label", f"org.opencontainers.image.url={ env['GIT_REPO_URL'] }",
+                "--label", f"org.opencontainers.image.source={ env['GIT_REPO_URL'] }",
+                "--label", f"org.opencontainers.image.version={ tag }",
+                "--label", "org.opencontainers.image.revision=${{ github.sha }}",
+                # FIXME: should not push the images immediately
+                "--push",
+                "--metadata-file", f"{tmp}/mdf",
+                #f"docker-compose/{image}"]) #TODO: restore
+                "busybox"])
+              digest = json.load(open(f"{tmp}/mdf"))["containerimage.digest"]
 
-      # Sign the resulting Docker image digest except on PRs.
-      # This will only write to the public Rekor transparency log when the Docker
-      # repository is public to avoid leaking data.  If you would like to publish
-      # transparency data even for private images, pass --force to cosign below.
-      # https://github.com/sigstore/cosign
-      - name: Sign the published Docker image
-        if: ${{ github.event_name != 'pull_request' }}
-        env:
-          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
-          TAGS: ${{ steps.meta.outputs.tags }}
-          DIGEST: ${{ steps.build-and-push.outputs.digest }}
-        # This step uses the identity token to provision an ephemeral certificate
-        # against the sigstore community Fulcio instance.
-        run: echo "${TAGS}" | xargs -I {} cosign sign --yes --tlog-upload=false --oidc-provider=github-actions {}@${DIGEST}
+              sys.stderr.write(f"#\n#   Signing {image}:{tag}\n#\n")
+              subprocess.call(["date"])
+              subprocess.check_call(["cosign", "sign", "--yes", "--tlog-upload=false", "--oidc-provider=github-actions", f"{repo}:{tag}@{digest}"])
+          finally:
+              subprocess.call(["date"])
+
+#      # Extract metadata (tags, labels) for Docker
+#      # https://github.com/docker/metadata-action
+#      - name: Extract Docker metadata
+#        id: meta
+#        uses: docker/metadata-action@96383f45573cb7f253c731d3b3ab81c87ef81934 # v5.0.0
+#        with:
+#          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+#
+#      # Build and push Docker image with Buildx (don't push on PR)
+#      # https://github.com/docker/build-push-action
+#      - name: Build and push Docker image
+#        id: build-and-push
+#        uses: docker/build-push-action@0565240e2d4ab88bba5387d719585280857ece09 # v5.0.0
+#        with:
+#          context: busybox
+#          push: ${{ github.event_name != 'pull_request' }}
+#          tags: ${{ steps.meta.outputs.tags }}
+#          labels: ${{ steps.meta.outputs.labels }}
+#          cache-from: type=gha
+#          cache-to: type=gha,mode=max
+#
+#      # Sign the resulting Docker image digest except on PRs.
+#      # This will only write to the public Rekor transparency log when the Docker
+#      # repository is public to avoid leaking data.  If you would like to publish
+#      # transparency data even for private images, pass --force to cosign below.
+#      # https://github.com/sigstore/cosign
+#      - name: Sign the published Docker image
+#        if: ${{ github.event_name != 'pull_request' }}
+#        env:
+#          # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-an-intermediate-environment-variable
+#          TAGS: ${{ steps.meta.outputs.tags }}
+#          DIGEST: ${{ steps.build-and-push.outputs.digest }}
+#        # This step uses the identity token to provision an ephemeral certificate
+#        # against the sigstore community Fulcio instance.
+#        run: echo "${TAGS}" | xargs -I {} cosign sign --yes --tlog-upload=false --oidc-provider=github-actions {}@${DIGEST}

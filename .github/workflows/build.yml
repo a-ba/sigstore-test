@@ -1,10 +1,11 @@
 name: Build
 
 on:
-  push:
-    branches:
-      - qualif-foo
-      - qualif-bar
+  workflow_call:
+#  push:
+#    branches:
+#      - qualif-foo
+#      - qualif-bar
 
 jobs:
   build:

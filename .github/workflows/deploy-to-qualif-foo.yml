@@ -2,12 +2,18 @@ name: Déploy to qualif foo
 
 
 on:
-  workflow_run:
-    workflows: [Build]
-    types: [completed]
-    branches: [qualif-foo]
+  push:
+    branches:
+      - qualif-foo
+      - qualif-bar
+#  workflow_run:
+#    workflows: [Build]
+#    types: [completed]
+#    branches: [qualif-foo]
 
 jobs:
+  build:
+    uses: ./.github/workflows/build.yml
   deploy:
     runs-on: ubuntu-latest
     env:

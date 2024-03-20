@@ -15,7 +15,7 @@ jobs:
       - name: simulate build
         run: |
           echo "build !"
-          printenv | ! grep ^DEPLOY_
+          ! printenv | grep ^DEPLOY_
 #        shell: python
 #        run: |
 #          import secrets

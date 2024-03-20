@@ -14,17 +14,15 @@ on:
 jobs:
   build:
     uses: ./.github/workflows/build.yml
+
   deploy:
+    needs: [build]
     runs-on: ubuntu-latest
     env:
       BUILD_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
     steps:
       - name: simulate deploy
         run: |
-          if [ "$BUILD_CONCLUSION" != 'success' ] ; then
-            echo "error: no deployment (build $BUILD_CONCLUSION)" >&2
-            exit 1
-          fi
           echo "deployment !"
 
 

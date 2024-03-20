@@ -18,11 +18,13 @@ jobs:
   deploy:
     needs: [build]
     runs-on: ubuntu-latest
+    environment: qualif-foo
     env:
       BUILD_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
     steps:
       - name: simulate deploy
         run: |
           echo "deployment !"
+          printenv | grep ^DEPLOY_
 
 

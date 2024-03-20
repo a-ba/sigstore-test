@@ -13,10 +13,13 @@ jobs:
 
     steps:
       - name: simulate build
-        shell: python
         run: |
-          import secrets
-          import sys
-          code = secrets.randbelow(2)
-          print("failure" if code else "success")
-          sys.exit(code)
+          echo "build !"
+          printenv | grep ^DEPLOY_
+#        shell: python
+#        run: |
+#          import secrets
+#          import sys
+#          code = secrets.randbelow(2)
+#          print("failure" if code else "success")
+#          sys.exit(code)

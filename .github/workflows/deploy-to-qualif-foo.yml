@@ -3,7 +3,7 @@ name: Déploy to qualif foo
 
 on:
   workflow_run:
-    workflows: [build.yml]
+    workflows: [Build]
     types: [completed]
     branches: [qualif-foo]
 

@@ -7,10 +7,6 @@ on:
     types: [completed]
     branches: [qualif-foo]
 
-  push:
-    branches:
-      - qualif-foo
-
 jobs:
   deploy:
     runs-on: ubuntu-latest

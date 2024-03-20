@@ -26,6 +26,6 @@ jobs:
           DEPLOY_URL:   ${{ secrets.DEPLOY_URL   }}
         run: |
           echo "deployment !"
-          printenv | grep ^DEPLOY_
+          printenv | grep ^DEPLOY_ || true
 
 

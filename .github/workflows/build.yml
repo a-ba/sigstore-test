@@ -1,0 +1,21 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - qualif-foo
+      - qualif-bar
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: simulate build
+        shell: python
+        run: |
+          import secrets
+          import sys
+          code = secrets.randbelow(2)
+          print("failure" if code else "success")
+          sys.exit(code)
